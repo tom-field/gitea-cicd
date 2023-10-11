@@ -1,0 +1,41 @@
+name: Gitea Actions Deploy sit
+run-name: ${{ gitea.actor }} is testing out Gitea Actions 🚀
+on:
+  push:
+    branches:
+      - sit # this script will run when pushed to "dev" branch
+jobs:
+  job-deploy-sit:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ gitea.event_name }} event."
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by Gitea!"
+      - run: echo "🔎 The name of your branch is ${{ gitea.ref }} and your repository is ${{ gitea.repository }}."
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - run: echo "💡 The ${{ gitea.repository }} repository has been cloned to the runner."
+      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
+
+      - run: echo "部署脚本开始执行..."
+      - run: apt-get update
+      - run: apt-get install sshpass
+      - run: apt-get install tar
+      - run: echo "安装基础软件"
+      - run: npm install
+      - run: npm run build
+      - run: tar -czvf dist.tar.gz ./dist
+      - run: echo "项目打包成功"
+
+      - run: |
+          sshpass -p ${{ secrets.SSH_ROOT_PASSWORD }} scp -o StrictHostKeyChecking=no dist.tar.gz
+          ${{ secrets.SSH_USER }}@${{ secrets.VM_IPADDRESS }}:/opt/1panel/apps/openresty/openresty/www/sites/tomfield.top/index
+          $SSH_EXEC "cd /opt/1panel/apps/openresty/openresty/www/sites/tomfield.top/index"
+          $SSH_EXEC "rm -rf ./"
+          $SSH_EXEC "tar -xzvf dist.tar.gz"
+          $SSH_EXEC "mv ./dist/** ./"
+          $SSH_EXEC "rm -rf dist"
+        env:
+          SSH_EXEC: sshpass -p ${{ secrets.SSH_ROOT_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.VM_IPADDRESS }}
+          FRONTEND_PATH: /opt/1panel/apps/openresty/openresty/www/sites/tomfield.top/index
+      - run: echo "🍏 This job's status is ${{ job.status }}."
+
